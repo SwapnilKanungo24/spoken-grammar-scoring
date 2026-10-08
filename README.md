@@ -3,7 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-ML-orange?logo=scikitlearn&logoColor=white)
 ![Whisper](https://img.shields.io/badge/OpenAI-Whisper-412991?logo=openai&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green)
+<!--![License](https://img.shields.io/badge/License-MIT-green)-->
 
 A multimodal regression system that scores the grammatical quality of spoken English audio on a continuous **0–5 scale**, combining Whisper transcripts with acoustic features and a Random Forest + Gradient Boosting ensemble.
 
