@@ -18,7 +18,7 @@ Built for the **SHL Hiring Assessment 2026** competition.
 
 Adding acoustic features cut RMSE from 0.9926 (text-only) to ~0.759, and the final ensemble improved it further to 0.7513.
 
-![OOF Actual vs Predicted](images/oof_scatter.png)
+![OOF Actual vs Predicted](oof_scatter.png)
 
 ## 🎯 Problem & Dataset
 
@@ -127,7 +127,7 @@ Five-fold cross-validation was used to estimate generalization.
 
 | Residuals | Feature Importance |
 |---|---|
-| ![Residuals](images/residuals.png) | ![Feature Importance](images/feature_importance.png) |
+| ![Residuals](residuals.png) | ![Feature Importance](feature_importance.png) |
 
 The notebook also contains the score distribution and model comparison plots.
 
@@ -187,6 +187,6 @@ Python · OpenAI Whisper · Librosa · scikit-learn · Pandas · NumPy · Matplo
 
 [GitHub](https://github.com/SwapnilKanungo24) · [LinkedIn](https://linkedin.com/in/swapnil-kanungo-181364324)
 
-## 📜 License
+<!--## 📜 License
 
-Released under the [MIT License](LICENSE).
+Released under the [MIT License](LICENSE).-->
