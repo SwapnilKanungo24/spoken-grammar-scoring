@@ -1,38 +1,36 @@
 # 🎙️ Spoken Grammar Scoring Engine
 
-> An AI-powered regression system for automatically scoring the grammatical quality of spoken English audio on a continuous 0–5 scale.
+![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-ML-orange?logo=scikitlearn&logoColor=white)
+![Whisper](https://img.shields.io/badge/OpenAI-Whisper-412991?logo=openai&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-## 📌 Overview
+A multimodal regression system that scores the grammatical quality of spoken English audio on a continuous **0–5 scale**, combining Whisper transcripts with acoustic features and a Random Forest + Gradient Boosting ensemble.
 
-Evaluating spoken grammar manually can be time-consuming and difficult to scale. This project develops a machine learning pipeline that analyzes spoken audio and predicts a continuous grammar score from **0 to 5**.
+Built for the **SHL Hiring Assessment 2026** competition.
 
-The system combines **speech transcription, linguistic analysis, and acoustic speech characteristics** to capture complementary information from each spoken response.
+## 📊 Results
 
-The project was developed as part of the **SHL Hiring Assessment 2026** competition.
+| Metric (5-fold CV, 769 samples) | Score |
+|---|---|
+| **Out-of-fold RMSE** | **0.7513** |
+| **Out-of-fold Pearson correlation** | **0.7965** |
 
----
+Adding acoustic features cut RMSE from 0.9926 (text-only) to ~0.759, and the final ensemble improved it further to 0.7513.
 
-## 🎯 Problem Statement
+![OOF Actual vs Predicted](images/oof_scatter.png)
 
-Given a spoken English audio sample, predict its grammar quality score on a continuous **0–5 scale**.
+## 🎯 Problem & Dataset
 
-The dataset contains:
+Given a 40–60 second spoken English audio sample, predict its grammar score (continuous, 0–5).
 
-- **769 labeled training audio samples**
-- **216 unlabeled test audio samples**
-- Audio duration of approximately **40–60 seconds**
-- Continuous grammar-quality scores
+- **769** labeled training samples
+- **216** unlabeled test samples
+- **Metrics:** RMSE and Pearson correlation
 
-The primary evaluation metrics are:
-
-- **RMSE (Root Mean Squared Error)**
-- **Pearson Correlation**
-
----
+> The raw competition dataset and audio files are not included in this repository.
 
 ## 🧠 Approach
-
-The solution follows a multimodal feature engineering and ensemble learning pipeline.
 
 ```text
                     Spoken Audio
@@ -44,6 +42,7 @@ The solution follows a multimodal feature engineering and ensemble learning pipe
               │                     │
               ▼                     ▼
       Linguistic Features      Acoustic Features
+           (8)                      (33)
               │                     │
               └──────────┬──────────┘
                          ▼
@@ -61,273 +60,133 @@ The solution follows a multimodal feature engineering and ensemble learning pipe
               Grammar Score (0–5)
 ```
 
----
+The model uses both **what was said** (linguistic) and **how it was said** (acoustic).
 
-## 🔊 1. Speech Transcription
+## 🔧 Feature Engineering
 
-The spoken audio was transcribed using **OpenAI Whisper (Base)**.
-
-Whisper converts each spoken response into text, allowing linguistic characteristics to be extracted from the transcript.
-
-Missing training transcripts were identified and reprocessed to ensure that the final feature matrix contained complete transcript-derived information.
-
----
-
-## 📝 2. Linguistic Feature Engineering
-
-Eight transcript-based features were extracted:
+### Linguistic features (8), from Whisper Base transcripts
 
 | Feature | Description |
 |---|---|
-| Word Count | Total number of words in the transcript |
+| Word Count | Total words in the transcript |
 | Sentence Count | Number of detected sentences |
-| Average Sentence Length | Average number of words per sentence |
-| Average Word Length | Average number of characters per word |
-| Vocabulary Diversity | Ratio of unique words to total words |
+| Average Sentence Length | Average words per sentence |
+| Average Word Length | Average characters per word |
+| Vocabulary Diversity | Unique words / total words |
 | Repeated Word Count | Number of repeated words |
 | Repeated Word Ratio | Proportion of repeated words |
 | Filler Count | Frequency of detected filler words |
 
-These features capture aspects of sentence structure, vocabulary usage, repetition, and speaking fluency.
+### Acoustic features (33), from Librosa
 
----
-
-## 🎵 3. Acoustic Feature Engineering
-
-Audio characteristics were extracted using **Librosa**.
-
-The **33 acoustic features** include:
-
-- Audio duration
-- RMS energy mean
-- RMS energy standard deviation
-- Zero-crossing rate mean
-- Zero-crossing rate standard deviation
-- Pitch mean
-- Pitch standard deviation
-- 13 MFCC means
-- 13 MFCC standard deviations
-
-These features provide information about speech delivery, acoustic variation, pitch characteristics, energy patterns, and spectral properties.
-
----
-
-## 🔗 4. Multimodal Feature Set
-
-The linguistic and acoustic features were combined into a single feature matrix.
-
-```text
-8 Linguistic Features
-        +
-33 Acoustic Features
-        =
-41 Total Features
-```
-
-| Dataset | Shape |
+| Group | Features |
 |---|---|
-| Training feature matrix | 769 samples × 41 features |
-| Test feature matrix | 216 samples × 41 features |
+| Duration | Audio duration |
+| Energy | RMS mean, RMS std |
+| Zero-crossing rate | Mean, std |
+| Pitch | Mean, std |
+| Spectral | 13 MFCC means, 13 MFCC standard deviations |
 
-The training and test feature columns were explicitly checked to ensure identical ordering before prediction.
+**Total:** 8 + 33 = **41 features**. Training matrix: 769 × 41. Test matrix: 216 × 41 (column order verified identical before prediction).
 
----
+## 🤖 Models & Ensemble
 
-## 🤖 5. Machine Learning Models
-
-Two tree-based regression models were selected based on validation performance.
-
-### Random Forest Regressor
-
-```text
-n_estimators     = 300
-max_depth        = 10
-min_samples_leaf = 2
-max_features     = 1.0
-random_state     = 42
-```
-
-### Gradient Boosting Regressor
+| Parameter | Random Forest | Gradient Boosting |
+|---|---|---|
+| `n_estimators` | 300 | 300 |
+| `max_depth` | 10 | 2 |
+| `min_samples_leaf` | 2 | 5 |
+| `max_features` | 1.0 | — |
+| `learning_rate` | — | 0.03 |
+| `loss` | — | `huber` |
+| `random_state` | 42 | 42 |
 
 ```text
-n_estimators     = 300
-learning_rate    = 0.03
-max_depth        = 2
-min_samples_leaf = 5
-loss             = "huber"
-random_state     = 42
+Final Prediction = 0.5 × RandomForest + 0.5 × GradientBoosting
 ```
 
----
+## 📈 Evaluation
 
-## ⚖️ 6. Ensemble Strategy
+Five-fold cross-validation was used to estimate generalization.
 
-The final system combines predictions from both models using equal weighting.
+| Model | Features | RMSE | Pearson | RMSE type |
+|---|---|---|---|---|
+| Random Forest | Text only (8) | 0.9926 | — | CV mean |
+| Random Forest | Multimodal (41) | 0.7590 | 0.7915 | OOF |
+| Gradient Boosting | Multimodal (41) | 0.7587 (±0.0381) | — | CV mean |
+| **RF + GB ensemble (50/50)** | **Multimodal (41)** | **0.7513** | **0.7965** | **OOF** |
 
-```text
-Final Prediction =
-    0.5 × Random Forest Prediction
-  + 0.5 × Gradient Boosting Prediction
-```
+> **Note:** "CV mean" is the average RMSE across the five folds; "OOF" is computed on the pooled out-of-fold predictions. The two are close but not strictly identical metrics.
 
-The ensemble was selected because it achieved better out-of-fold performance than the individual models evaluated during experimentation.
+| Final ensemble | RMSE | Pearson |
+|---|---|---|
+| Out-of-fold (generalization estimate) | **0.7513** | **0.7965** |
+| Training (optimistic, same data used for fitting) | 0.4764 | 0.9320 |
 
----
+### Visual analysis
 
-## 📊 7. Model Evaluation
-
-Five-fold cross-validation was used to estimate the model's generalization performance.
-
-### Final Ensemble — Out-of-Fold Performance
-
-| Metric | Score |
+| Residuals | Feature Importance |
 |---|---|
-| OOF RMSE | **0.7513** |
-| OOF Pearson Correlation | **0.7965** |
+| ![Residuals](images/residuals.png) | ![Feature Importance](images/feature_importance.png) |
 
-### Final Ensemble — Training Performance
+The notebook also contains the score distribution and model comparison plots.
 
-| Metric | Score |
-|---|---|
-| Training RMSE | 0.4764 |
-| Training Pearson Correlation | 0.9320 |
+## ⚠️ Limitations
 
-> **Note:** Training metrics can be optimistic because the model is evaluated on the same data used for fitting. The out-of-fold validation metrics are more representative of expected generalization performance.
+- **Overfitting gap:** training RMSE (0.48) is well below OOF RMSE (0.75).
+- **Small dataset:** 769 labeled samples limits how much the models can learn.
+- **Transcription noise:** Whisper Base is a small model; transcription errors propagate into the linguistic features.
+- **Shallow linguistic features:** filler and repetition detection is rule-based, and there are no syntax or grammar-error features.
+- **Tuning bias:** hyperparameters were selected with the same cross-validation setup used for reporting, so the score may be slightly optimistic.
 
----
+## 🔮 Future Work
 
-## 📈 Model Development
+- Larger Whisper models (small / medium) for cleaner transcripts
+- Grammar-error features (e.g. LanguageTool) and transformer embeddings
+- Nested cross-validation for an unbiased estimate
+- Stacking with a learned meta-model instead of fixed 50/50 weights
 
-Several feature and model configurations were evaluated during development. The main progression was:
+## 🚀 Quick Start
 
-```text
-Text-only features
-        │
-        ▼
-Audio features added
-        │
-        ▼
-41-feature multimodal model
-        │
-        ▼
-Random Forest + Gradient Boosting
-        │
-        ▼
-50/50 Ensemble
-        │
-        ▼
-OOF RMSE: 0.7513
-Pearson: 0.7965
+```bash
+git clone https://github.com/SwapnilKanungo24/spoken-grammar-scoring.git
+cd spoken-grammar-scoring
+pip install -r requirements.txt
 ```
 
-The final approach uses both:
+> Whisper requires **FFmpeg** installed on your system (`sudo apt install ffmpeg` / `brew install ffmpeg`).
 
-- **What was spoken** — linguistic information
-- **How it was spoken** — acoustic information
-
-This provides a more comprehensive representation of spoken grammar quality than using transcript features alone.
-
----
-
-## 📊 Visual Analysis
-
-The accompanying notebook contains visualizations covering:
-
-- Training grammar-score distribution
-- Model performance comparison
-- Out-of-fold actual vs. predicted scores
-- Residual error analysis
-- Feature importance from the final tree-based models
-
-These visualizations were used to understand the dataset, compare models, and analyze prediction behavior.
-
----
-
-## 🛠️ Technology Stack
-
-| Category | Technologies |
-|---|---|
-| Programming Language | Python |
-| Speech Recognition | OpenAI Whisper |
-| Audio Processing | Librosa |
-| Data Processing | Pandas, NumPy |
-| Machine Learning | Scikit-learn |
-| Visualization | Matplotlib, Seaborn |
-| Development Environment | Kaggle Notebook, Jupyter |
-| Version Control | Git, GitHub |
-
----
+1. Open `SHL_Grammar_Scoring_Final_Clean.ipynb` (Kaggle or Jupyter).
+2. Attach the competition dataset.
+3. Enable GPU acceleration for Whisper.
+4. Run all cells top to bottom. The notebook handles transcription, feature extraction, training, evaluation, and writes the predictions CSV.
 
 ## 📂 Repository Structure
 
 ```text
 spoken-grammar-scoring/
-│
 ├── SHL_Grammar_Scoring_Final_Clean.ipynb
-├── Swapnil_Kanungo.csv
+├── images/
+│   ├── oof_scatter.png
+│   ├── residuals.png
+│   └── feature_importance.png
+├── outputs/
+│   └── submission.csv
+├── requirements.txt
+├── LICENSE
 └── README.md
 ```
 
-> The raw competition dataset and audio files are not included in this repository.
+## 🛠️ Tech Stack
 
----
-
-## 🚀 Reproducibility
-
-To reproduce the project:
-
-1. Clone or download this repository.
-2. Open `SHL_Grammar_Scoring_Final_Clean.ipynb`.
-3. Attach the required competition dataset.
-4. Enable GPU acceleration for Whisper.
-5. Run the notebook from top to bottom.
-6. The notebook performs transcription, feature extraction, model training, evaluation, and test prediction.
-7. The final predictions are saved as a CSV submission file.
-
-The notebook is organized as an end-to-end machine learning pipeline so that the complete workflow can be reproduced from preprocessing through final prediction.
-
----
-
-## 💡 Key Takeaways
-
-- Speech transcription provides useful linguistic information for automated grammar assessment.
-- Acoustic characteristics provide complementary information beyond the transcript.
-- Combining linguistic and acoustic features produces a stronger representation of spoken responses.
-- Ensemble learning can improve predictive performance by combining different tree-based regression models.
-- Out-of-fold validation provides a more reliable estimate of generalization than training performance alone.
-
----
-
-## ⭐ Project Highlights
-
-- 🎙️ Automated spoken grammar assessment
-- 🧠 Whisper-based speech transcription
-- 📝 Linguistic feature engineering
-- 🎵 Acoustic feature engineering
-- 🤖 Ensemble regression
-- 📊 Five-fold cross-validation
-- 📈 RMSE and Pearson correlation evaluation
-- 🔬 Feature importance and residual analysis
-- 🚀 End-to-end reproducible ML pipeline
-
----
+Python · OpenAI Whisper · Librosa · scikit-learn · Pandas · NumPy · Matplotlib · Seaborn · Kaggle / Jupyter · Git
 
 ## 👨‍💻 Author
 
-**Swapnil Kanungo**
-B.Tech — Computer Science and Information Technology
-
-Interested in:
-
-- Artificial Intelligence
-- Machine Learning
-- Data Science
-- Backend Development
+**Swapnil Kanungo**, B.Tech in Computer Science and Information Technology
 
 [GitHub](https://github.com/SwapnilKanungo24) · [LinkedIn](https://linkedin.com/in/swapnil-kanungo-181364324)
 
----
-
 ## 📜 License
 
-This repository is intended for educational, portfolio, and research purposes.
+Released under the [MIT License](LICENSE).
